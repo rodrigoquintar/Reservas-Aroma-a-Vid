@@ -132,19 +132,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const month = new Date().getMonth() + 1;
     const customId = `${month.toString().padStart(2, '0')}-${randomNum}`;
 
+    // Mapeo estrictamente manual para coincidir con tus columnas cortadas/minúsculas
     const newRes = {
       id: customId,
       clientId: reservation.clientId,
       roomId: reservation.roomId,
-      checkin: reservation.checkIn,
+      checkin: reservation.checkIn, // Cambiado a minúsculas por tu DB
       checkOut: reservation.checkOut,
       checkInTin: reservation.checkInTin || "14:00",
       checkOutT: reservation.checkOutT || "10:00",
       status: reservation.status || 'Confirmada',
-      totalAmoun: reservation.totalAmount || 0,
-      paidAmoun: reservation.paidAmount || 0,
+      totalAmoun: reservation.totalAmount || 0, // Sin la T final
+      paidAmoun: reservation.paidAmount || 0,   // Sin la T final
       deposit: reservation.deposit || 0,
-      storeCharg: reservation.storeCharge || 0,
+      storeCharg: reservation.storeCharge || 0, // Sin la E final
       notes: reservation.notes || ""
     };
 
