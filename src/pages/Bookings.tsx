@@ -130,39 +130,46 @@ const Bookings: React.FC = () => {
   };
 
   const handleSaveReservation = async () => {
-     if(!selectedRoomId || !selectedClientId || !dates.checkIn || !dates.checkOut) return alert("Complete todos los campos.");
-     
-     setIsSaving(true);
-     try {
-       const reservationData = {
-           clientId: selectedClientId,
-           roomId: selectedRoomId,
-           checkIn: dates.checkIn,
-           checkOut: dates.checkOut,
-           status: editingResId ? (reservations.find(r => r.id === editingResId)?.status || ReservationStatus.CONFIRMED) : ReservationStatus.CONFIRMED,
-           totalPrice: Number(totalPrice),
-           paidAmount: Number(paidAmount),
-           deposit: Number(deposit),
-           guests: Number(guests),
-           paymentStatus: Number(paidAmount) >= Number(totalPrice) ? PaymentStatus.PAID : Number(paidAmount) > 0 ? PaymentStatus.PARTIAL : PaymentStatus.PENDING,
-           notes: ""
-       };
+  if(!selectedRoomId || !selectedClientId || !dates.checkIn || !dates.checkOut) return alert("Complete todos los campos.");
+  
+  setIsSaving(true);
+  try {
+    // Generador de ID inteligente: MM-YYYY-Random
+    const [year, month] = dates.checkIn.split('-'); 
+    const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    const customId = `${month}-${year}-${randomSuffix}`;
 
-       if (editingResId) {
-         await updateReservation({ ...reservationData, id: editingResId } as Reservation);
-       } else {
-         await addReservation(reservationData as Omit<Reservation, 'id'>);
-       }
+    const reservationData = {
+        // Si estamos editando usamos el ID viejo, si es nueva usamos el nuevo formato
+        id: editingResId || customId, 
+        clientId: selectedClientId,
+        roomId: selectedRoomId,
+        checkIn: dates.checkIn,
+        checkOut: dates.checkOut,
+        status: editingResId ? (reservations.find(r => r.id === editingResId)?.status || ReservationStatus.CONFIRMED) : ReservationStatus.CONFIRMED,
+        totalPrice: Number(totalPrice),
+        paidAmount: Number(paidAmount),
+        deposit: Number(deposit),
+        guests: Number(guests),
+        paymentStatus: Number(paidAmount) >= Number(totalPrice) ? PaymentStatus.PAID : Number(paidAmount) > 0 ? PaymentStatus.PARTIAL : PaymentStatus.PENDING,
+        notes: ""
+    };
 
-       setShowModal(false);
-       resetForm();
-     } catch (error) {
-       console.error('Error saving reservation:', error);
-       alert('Error al guardar la reserva');
-     } finally {
-       setIsSaving(false);
-     }
-  };
+    if (editingResId) {
+      await updateReservation({ ...reservationData, id: editingResId } as Reservation);
+    } else {
+      await addReservation(reservationData as Omit<Reservation, 'id'>);
+    }
+
+    setShowModal(false);
+    resetForm();
+  } catch (error) {
+    console.error('Error saving reservation:', error);
+    alert('Error al guardar la reserva');
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   const handleQuickAddClient = async () => {
     if (!newClientData.firstName || !newClientData.lastName || !newClientData.phone) {

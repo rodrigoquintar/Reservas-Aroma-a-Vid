@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { Room, Client, Reservation, User, RoomStatus, ReservationStatus } from '../types';
+import { Room, Client, Product, Reservation, Sale, RoomStatus, ReservationStatus, MaintenanceItem, User } from '../types';
 import { supabase } from '../supabase';
 
 const PIN_ADMIN = "0209";
@@ -13,18 +13,28 @@ const USERS: Record<string, User> = {
 interface AppContextType {
   rooms: Room[];
   clients: Client[];
+  products: Product[];
+  maintenanceItems: MaintenanceItem[];
   reservations: Reservation[];
+  sales: Sale[];
   currentUser: User | null;
   isLoggedIn: boolean;
   loading: boolean;
   login: (pin: string) => boolean;
   logout: () => void;
   updateRoomStatus: (roomId: string, status: RoomStatus) => Promise<void>;
+  addRoom: (room: Omit<Room, 'id'>) => Promise<void>;
+  updateRoom: (room: Room) => Promise<void>;
+  deleteRoom: (roomId: string) => Promise<void>;
   addClient: (client: Omit<Client, 'id'>) => Promise<Client | null>;
+  deleteClient: (clientId: string) => Promise<void>;
   addReservation: (reservation: Omit<Reservation, 'id'>) => Promise<void>;
   updateReservation: (reservation: Reservation) => Promise<void>;
   deleteReservation: (reservationId: string) => Promise<void>;
   updateReservationStatus: (reservationId: string, status: ReservationStatus) => Promise<void>;
+  // Funciones de Ventas y Mantenimiento (Simplificadas para evitar errores de tabla)
+  addSale: (sale: Omit<Sale, 'id'>) => Promise<void>;
+  addMaintenanceItem: (item: Omit<MaintenanceItem, 'id'>) => Promise<void>;
   getRoomById: (id: string) => Room | undefined;
   getClientById: (id: string) => Client | undefined;
 }
@@ -39,12 +49,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Solo pedimos datos de las tablas que SI existen en tu Supabase
       const { data: roomsData } = await supabase.from('rooms').select('*');
       const { data: clientsData } = await supabase.from('clients').select('*');
       const { data: resData } = await supabase.from('reservations').select('*');
@@ -52,6 +66,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (roomsData) setRooms(roomsData);
       if (clientsData) setClients(clientsData);
       if (resData) setReservations(resData);
+      
+      // Nota: No pedimos 'sales' ni 'maintenance_items' hasta que las crees en Supabase
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -80,6 +96,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!error) setRooms(prev => prev.map(r => r.id === roomId ? { ...r, status } : r));
   };
 
+  const addRoom = async (room: Omit<Room, 'id'>) => {
+    const { data, error } = await supabase.from('rooms').insert([room]).select();
+    if (!error && data) setRooms(prev => [...prev, data[0]]);
+  };
+
+  const updateRoom = async (updatedRoom: Room) => {
+    const { error } = await supabase.from('rooms').update(updatedRoom).eq('id', updatedRoom.id);
+    if (!error) setRooms(prev => prev.map(r => r.id === updatedRoom.id ? updatedRoom : r));
+  };
+
+  const deleteRoom = async (roomId: string) => {
+    const { error } = await supabase.from('rooms').delete().eq('id', roomId);
+    if (!error) setRooms(prev => prev.filter(r => r.id !== roomId));
+  };
+
   const addClient = async (client: Omit<Client, 'id'>) => {
     const { data, error } = await supabase.from('clients').insert([client]).select();
     if (!error && data) {
@@ -89,10 +120,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return null;
   };
 
+  const deleteClient = async (clientId: string) => {
+    const { error } = await supabase.from('clients').delete().eq('id', clientId);
+    if (!error) setClients(prev => prev.filter(c => c.id !== clientId));
+  };
+
   const addReservation = async (reservation: Omit<Reservation, 'id'>) => {
     const { data, error } = await supabase.from('reservations').insert([reservation]).select();
-    if (error) console.error("Error al insertar:", error);
     if (!error && data) setReservations(prev => [...prev, data[0]]);
+    if (error) console.error("Error reserva:", error);
   };
 
   const updateReservation = async (updatedRes: Reservation) => {
@@ -116,14 +152,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  // Funciones placeholder para no romper el resto de la app
+  const addSale = async (sale: Omit<Sale, 'id'>) => { console.log("Función addSale pendiente de tabla Supabase"); };
+  const addMaintenanceItem = async (item: Omit<MaintenanceItem, 'id'>) => { console.log("Función addMaintenance pendiente"); };
+
   const getRoomById = (id: string) => rooms.find(r => r.id === id);
   const getClientById = (id: string) => clients.find(c => c.id === id);
 
   return (
     <AppContext.Provider value={{
-      rooms, clients, reservations, currentUser, isLoggedIn: !!currentUser,
-      loading, login, logout, updateRoomStatus, addClient, addReservation,
-      updateReservation, deleteReservation, updateReservationStatus, getRoomById, getClientById
+      rooms, clients, products, maintenanceItems, reservations, sales, currentUser, isLoggedIn: !!currentUser,
+      loading, login, logout, updateRoomStatus, addRoom, updateRoom, deleteRoom, addClient, deleteClient, addReservation,
+      updateReservation, deleteReservation, updateReservationStatus, addSale, addMaintenanceItem, getRoomById, getClientById
     }}>
       {children}
     </AppContext.Provider>
