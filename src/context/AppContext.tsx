@@ -132,20 +132,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const month = new Date().getMonth() + 1;
     const customId = `${month.toString().padStart(2, '0')}-${randomNum}`;
 
-    // Mapeo estrictamente manual para coincidir con tus columnas cortadas/minúsculas
+    // MAPEO FINAL - COPIA EXACTA DE TU SUPABASE
     const newRes = {
       id: customId,
       clientId: reservation.clientId,
       roomId: reservation.roomId,
-      checkin: reservation.checkIn, // Cambiado a minúsculas por tu DB
+      checkin: reservation.checkIn, 
       checkOut: reservation.checkOut,
-      checkInTin: reservation.checkInTin || "14:00",
+      checkInTin: reservation.checkInTin || "14:00", // CON "T" MAYÚSCULA
       checkOutT: reservation.checkOutT || "10:00",
       status: reservation.status || 'Confirmada',
-      totalAmoun: reservation.totalAmount || 0, // Sin la T final
-      paidAmoun: reservation.paidAmount || 0,   // Sin la T final
+      totalAmoun: reservation.totalAmount || 0,
+      paidAmoun: reservation.paidAmount || 0,
       deposit: reservation.deposit || 0,
-      storeCharg: reservation.storeCharge || 0, // Sin la E final
+      storeCharg: reservation.storeCharge || 0,
       notes: reservation.notes || ""
     };
 
@@ -153,7 +153,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     if (error) {
       console.error("Error reserva detalle:", error);
-      alert("No se pudo guardar la reserva: " + error.message);
+      alert("Error de Supabase: " + error.message);
     } else if (data) {
       setReservations(prev => [...prev, data[0]]);
       if (newRes.status === ReservationStatus.CHECKED_IN) {
