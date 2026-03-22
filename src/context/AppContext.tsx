@@ -110,11 +110,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const addClient = async (client: Omit<Client, 'id'>) => {
     const tempId = `c-${Date.now()}`;
     const { data, error } = await supabase.from('clients').insert([{ ...client, id: tempId }]).select();
-    
-    if (error) {
-      console.error("Error al crear cliente:", error);
-      return null;
-    }
+    if (error) return null;
     if (data && data[0]) {
       setClients(prev => [...prev, data[0]]);
       return data[0];
@@ -129,35 +125,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const addReservation = async (reservation: Omit<Reservation, 'id'>) => {
     const randomNum = Math.floor(1000 + Math.random() * 9000);
-    const month = new Date().getMonth() + 1;
-    const customId = `${month.toString().padStart(2, '0')}-${randomNum}`;
+    const month = (new Date().getMonth() + 1).toString().padStart(2, '0');
+    const customId = `${month}-${randomNum}`;
 
-    // MAPEO FINAL - COPIA EXACTA DE TU SUPABASE
-    const newRes = {
+    const payload = {
       id: customId,
       clientId: reservation.clientId,
       roomId: reservation.roomId,
       checkin: reservation.checkIn, 
       checkOut: reservation.checkOut,
-      checkInTime: reservation.checkInTin || "14:00", // CON "T" MAYÚSCULA
+      checkInTime: reservation.checkInTin || "14:00",
       checkOutTime: reservation.checkOutT || "10:00",
       status: reservation.status || 'Confirmada',
-      totalAmount: reservation.totalAmount || 0,
-      paidAmount: reservation.paidAmount || 0,
-      deposit: reservation.deposit || 0,
-      storeCharges: reservation.storeCharge || 0,
+      totalAmount: Number(reservation.totalAmount) || 0,
+      paidAmount: Number(reservation.paidAmount) || 0,
+      deposit: Number(reservation.deposit) || 0,
+      storeCharges: Number(reservation.storeCharge) || 0,
       notes: reservation.notes || ""
     };
 
-    const { data, error } = await supabase.from('reservations').insert([newRes]).select();
+    const { data, error } = await supabase.from('reservations').insert([payload]).select();
     
     if (error) {
       console.error("Error reserva detalle:", error);
       alert("Error de Supabase: " + error.message);
     } else if (data) {
       setReservations(prev => [...prev, data[0]]);
-      if (newRes.status === ReservationStatus.CHECKED_IN) {
-        await updateRoomStatus(newRes.roomId, RoomStatus.OCCUPIED);
+      if (payload.status === ReservationStatus.CHECKED_IN) {
+        await updateRoomStatus(payload.roomId, RoomStatus.OCCUPIED);
       }
     }
   };
