@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { ReservationStatus, Room, Client, PaymentStatus, Reservation } from '../types';
 import { Search, Plus, X, ChevronLeft, ChevronRight, Edit, Trash2, Users, Loader2 } from 'lucide-react';
@@ -76,11 +76,10 @@ const Bookings: React.FC = () => {
   const [availableRooms, setAvailableRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [selectedClientId, setSelectedClientId] = useState('');
-  const [totalPrice, setTotalPrice] = useState<number | string>(0); 
-  const [deposit, setDeposit] = useState<number | string>(0);
-  const [paidAmount, setPaidAmount] = useState<number | string>(0);
-  const [discount, setDiscount] = useState<number | string>(0);
-  const [guests, setGuests] = useState<number | string>(1);
+  const [totalPrice, setTotalPrice] = useState<number>(0); 
+  const [deposit, setDeposit] = useState<number>(0);
+  const [paidAmount, setPaidAmount] = useState<number>(0);
+  const [guests, setGuests] = useState<number>(1);
 
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -113,7 +112,6 @@ const Bookings: React.FC = () => {
     setTotalPrice(0);
     setDeposit(0);
     setPaidAmount(0);
-    setDiscount(0);
     setGuests(1);
     setEditingResId(null);
     setIsAddingClient(false);
@@ -127,7 +125,6 @@ const Bookings: React.FC = () => {
     setTotalPrice(res.totalPrice);
     setDeposit(res.deposit);
     setPaidAmount(res.paidAmount);
-    setDiscount(res.discount || 0);
     setGuests(res.guests || 1);
     setShowModal(true);
   };
@@ -137,7 +134,7 @@ const Bookings: React.FC = () => {
      
      setIsSaving(true);
      try {
-       const reservationData: any = {
+       const reservationData = {
            clientId: selectedClientId,
            roomId: selectedRoomId,
            checkIn: dates.checkIn,
@@ -146,16 +143,15 @@ const Bookings: React.FC = () => {
            totalPrice: Number(totalPrice),
            paidAmount: Number(paidAmount),
            deposit: Number(deposit),
-           discount: Number(discount),
            guests: Number(guests),
            paymentStatus: Number(paidAmount) >= Number(totalPrice) ? PaymentStatus.PAID : Number(paidAmount) > 0 ? PaymentStatus.PARTIAL : PaymentStatus.PENDING,
-           storeCharges: editingResId ? (reservations.find(r => r.id === editingResId)?.storeCharges || 0) : 0
+           notes: ""
        };
 
        if (editingResId) {
-         await updateReservation({ ...reservationData, id: editingResId });
+         await updateReservation({ ...reservationData, id: editingResId } as Reservation);
        } else {
-         await addReservation(reservationData);
+         await addReservation(reservationData as Omit<Reservation, 'id'>);
        }
 
        setShowModal(false);
@@ -245,7 +241,7 @@ const Bookings: React.FC = () => {
                   const client = clients.find(c => c.id === res.clientId);
                   const room = rooms.find(r => r.id === res.roomId);
                   const checkInDate = new Date(res.checkIn + 'T00:00:00');
-                  const balance = res.totalPrice - (res.paidAmount || 0) - (res.discount || 0);
+                  const balance = res.totalPrice - (res.paidAmount || 0);
                   return (
                     <tr key={res.id} className="hover:bg-indigo-50/20 transition-colors text-xs">
                         <td className="p-4">
@@ -351,19 +347,12 @@ const Bookings: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1">
                                 <div className="bg-emerald-50/50 p-4 rounded-2xl border-2 border-emerald-100/30">
                                     <label className="block text-[10px] font-black text-emerald-900 mb-2 uppercase tracking-widest">Monto Pagado ($)</label>
                                     <div className="relative">
                                         <span className="absolute left-0 top-1/2 -translate-y-1/2 text-emerald-600 font-black text-lg">$</span>
                                         <input type="number" className="w-full bg-transparent text-slate-900 font-black text-3xl outline-none pl-6" value={paidAmount === 0 ? '' : paidAmount} onChange={e => setPaidAmount(e.target.value === '' ? 0 : Number(e.target.value))} placeholder="0" />
-                                    </div>
-                                </div>
-                                <div className="bg-rose-50/50 p-4 rounded-2xl border-2 border-rose-100/30">
-                                    <label className="block text-[10px] font-black text-rose-900 mb-2 uppercase tracking-widest">Descuento ($)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-0 top-1/2 -translate-y-1/2 text-rose-600 font-black text-lg">$</span>
-                                        <input type="number" className="w-full bg-transparent text-slate-900 font-black text-3xl outline-none pl-6" value={discount === 0 ? '' : discount} onChange={e => setDiscount(e.target.value === '' ? 0 : Number(e.target.value))} placeholder="0" />
                                     </div>
                                 </div>
                             </div>
@@ -390,7 +379,7 @@ const Bookings: React.FC = () => {
                 <p className="text-slate-500 text-sm font-bold uppercase tracking-widest">Esta acción no se puede deshacer</p>
                 <div className="flex gap-4 mt-10">
                     <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-700 rounded-2xl font-black hover:bg-slate-200 transition uppercase text-xs tracking-widest">Volver</button>
-                    <button onClick={async () => { await deleteReservation(resToDelete!); setShowDeleteModal(false); }} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg shadow-rose-100 hover:bg-rose-700 transition uppercase text-xs tracking-widest">Eliminar</button>
+                    <button onClick={async () => { if(resToDelete) await deleteReservation(resToDelete); setShowDeleteModal(false); }} className="flex-1 py-4 bg-rose-600 text-white rounded-2xl font-black shadow-lg shadow-rose-100 hover:bg-rose-700 transition uppercase text-xs tracking-widest">Eliminar</button>
                 </div>
             </div>
         </div>
