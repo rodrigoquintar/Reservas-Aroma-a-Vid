@@ -32,7 +32,6 @@ interface AppContextType {
   updateReservation: (reservation: Reservation) => Promise<void>;
   deleteReservation: (reservationId: string) => Promise<void>;
   updateReservationStatus: (reservationId: string, status: ReservationStatus) => Promise<void>;
-  // Funciones de Ventas y Mantenimiento (Simplificadas para evitar errores de tabla)
   addSale: (sale: Omit<Sale, 'id'>) => Promise<void>;
   addMaintenanceItem: (item: Omit<MaintenanceItem, 'id'>) => Promise<void>;
   getRoomById: (id: string) => Room | undefined;
@@ -58,7 +57,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Solo pedimos datos de las tablas que SI existen en tu Supabase
       const { data: roomsData } = await supabase.from('rooms').select('*');
       const { data: clientsData } = await supabase.from('clients').select('*');
       const { data: resData } = await supabase.from('reservations').select('*');
@@ -66,8 +64,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (roomsData) setRooms(roomsData);
       if (clientsData) setClients(clientsData);
       if (resData) setReservations(resData);
-      
-      // Nota: No pedimos 'sales' ni 'maintenance_items' hasta que las crees en Supabase
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -112,8 +108,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addClient = async (client: Omit<Client, 'id'>) => {
-    const { data, error } = await supabase.from('clients').insert([client]).select();
-    if (!error && data) {
+    // Generamos un ID manual de cliente para evitar conflictos
+    const tempId = `c-${Date.now()}`;
+    const { data, error } = await supabase.from('clients').insert([{ ...client, id: tempId }]).select();
+    
+    if (error) {
+      console.error("Error al crear cliente:", error);
+      return null;
+    }
+    if (data && data[0]) {
       setClients(prev => [...prev, data[0]]);
       return data[0];
     }
@@ -126,52 +129,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addReservation = async (reservation: Omit<Reservation, 'id'>) => {
-    const { data, error } = await supabase.from('reservations').insert([reservation]).select();
-    if (!error && data) setReservations(prev => [...prev, data[0]]);
-    if (error) console.error("Error reserva:", error);
-  };
+    // Generamos el ID con el formato de tu Supabase (Mes-NúmeroAzar)
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const month = new Date().getMonth() + 1;
+    const customId = `${month.toString().padStart(2, '0')}-${randomNum}`;
 
-  const updateReservation = async (updatedRes: Reservation) => {
-    const { error } = await supabase.from('reservations').update(updatedRes).eq('id', updatedRes.id);
-    if (!error) setReservations(prev => prev.map(r => r.id === updatedRes.id ? updatedRes : r));
-  };
+    const newRes = {
+      ...reservation,
+      id: customId,
+      // Aseguramos valores por defecto para que no haya nulos en columnas numéricas
+      totalAmount: reservation.totalAmount || 0,
+      paidAmount: reservation.paidAmount || 0,
+      deposit: reservation.deposit || 0,
+      storeCharge: reservation.storeCharge || 0
+    };
 
-  const deleteReservation = async (reservationId: string) => {
-    const { error } = await supabase.from('reservations').delete().eq('id', reservationId);
-    if (!error) setReservations(prev => prev.filter(r => r.id !== reservationId));
-  };
-
-  const updateReservationStatus = async (reservationId: string, status: ReservationStatus) => {
-    const res = reservations.find(r => r.id === reservationId);
-    if (!res) return;
-    const { error } = await supabase.from('reservations').update({ status }).eq('id', reservationId);
-    if (!error) {
-      setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status } : r));
-      if (status === ReservationStatus.CHECKED_IN) await updateRoomStatus(res.roomId, RoomStatus.OCCUPIED);
-      else if (status === ReservationStatus.CHECKED_OUT) await updateRoomStatus(res.roomId, RoomStatus.CLEANING);
+    const { data, error } = await supabase.from('reservations').insert([newRes]).select();
+    
+    if (error) {
+      console.error("Error reserva detalle:", error);
+      alert("No se pudo guardar la reserva: " + error.message);
+    } else if (data) {
+      setReservations(prev => [...prev, data[0]]);
+      if (newRes.status === ReservationStatus.CHECKED_IN) {
+        await updateRoomStatus(newRes.roomId, RoomStatus.OCCUPIED);
+      }
     }
   };
 
-  // Funciones placeholder para no romper el resto de la app
-  const addSale = async (sale: Omit<Sale, 'id'>) => { console.log("Función addSale pendiente de tabla Supabase"); };
-  const addMaintenanceItem = async (item: Omit<MaintenanceItem, 'id'>) => { console.log("Función addMaintenance pendiente"); };
-
-  const getRoomById = (id: string) => rooms.find(r => r.id === id);
-  const getClientById = (id: string) => clients.find(c => c.id === id);
-
-  return (
-    <AppContext.Provider value={{
-      rooms, clients, products, maintenanceItems, reservations, sales, currentUser, isLoggedIn: !!currentUser,
-      loading, login, logout, updateRoomStatus, addRoom, updateRoom, deleteRoom, addClient, deleteClient, addReservation,
-      updateReservation, deleteReservation, updateReservationStatus, addSale, addMaintenanceItem, getRoomById, getClientById
-    }}>
-      {children}
-    </AppContext.Provider>
-  );
-};
-
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (context === undefined) throw new Error('useApp must be used within an AppProvider');
-  return context;
-};
+  const updateReservation = async (updatedRes: Reservation) => {
+    const { error } = await supabase.from
