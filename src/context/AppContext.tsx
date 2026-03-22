@@ -142,10 +142,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       checkInTime: reservation.checkInTin || "14:00", // CON "T" MAYÚSCULA
       checkOutTime: reservation.checkOutT || "10:00",
       status: reservation.status || 'Confirmada',
-      totalAmoun: reservation.totalAmount || 0,
-      paidAmoun: reservation.paidAmount || 0,
+      totalAmount: reservation.totalAmount || 0,
+      paidAmount: reservation.paidAmount || 0,
       deposit: reservation.deposit || 0,
-      storeCharg: reservation.storeCharge || 0,
+      storeCharges: reservation.storeCharge || 0,
       notes: reservation.notes || ""
     };
 
