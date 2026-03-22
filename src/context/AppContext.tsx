@@ -108,7 +108,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addClient = async (client: Omit<Client, 'id'>) => {
-    // Generamos un ID manual de cliente para evitar conflictos
     const tempId = `c-${Date.now()}`;
     const { data, error } = await supabase.from('clients').insert([{ ...client, id: tempId }]).select();
     
@@ -129,7 +128,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const addReservation = async (reservation: Omit<Reservation, 'id'>) => {
-    // Generamos el ID con el formato de tu Supabase (Mes-NúmeroAzar)
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const month = new Date().getMonth() + 1;
     const customId = `${month.toString().padStart(2, '0')}-${randomNum}`;
@@ -137,7 +135,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const newRes = {
       ...reservation,
       id: customId,
-      // Aseguramos valores por defecto para que no haya nulos en columnas numéricas
       totalAmount: reservation.totalAmount || 0,
       paidAmount: reservation.paidAmount || 0,
       deposit: reservation.deposit || 0,
@@ -158,4 +155,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateReservation = async (updatedRes: Reservation) => {
-    const { error } = await supabase.from
+    const { error } = await supabase.from('reservations').update(updatedRes).eq('id', updatedRes.id);
+    if (!error) setReservations(prev => prev.map(r => r.id === updatedRes.id ? updatedRes : r));
+  };
+
+  const deleteReservation = async (reservationId: string) => {
+    const { error } = await supabase.from('reservations').delete().eq('id', reservationId);
+    if (!error) setReservations(prev => prev.filter(r => r.id !== reservationId));
+  };
+
+  const updateReservationStatus = async (reservationId: string, status: ReservationStatus) => {
+    const res = reservations.find(r => r.id === reservationId);
+    if (!res) return;
+    const { error } = await supabase.from('reservations').update({ status }).eq('id', reservationId);
+    if (!error) {
+      setReservations(prev => prev.map(r => r.id === reservationId ? { ...r, status } : r));
+      if (status === ReservationStatus.CHECKED_IN) await updateRoomStatus(res.roomId, RoomStatus.OCCUPIED);
+      else if (status === ReservationStatus.CHECKED_OUT) await updateRoomStatus(res.roomId, RoomStatus.CLEANING);
+    }
+  };
+
+  const addSale = async (sale: Omit<Sale, 'id'>) => { console.log("Ventas pendiente"); };
+  const addMaintenanceItem = async (item: Omit<MaintenanceItem, 'id'>) => { console.error("Mantenimiento pendiente"); };
+
+  const getRoomById = (id: string) => rooms.find(r => r.id === id);
+  const getClientById = (id: string) => clients.find(c => c.id === id);
+
+  return (
+    <AppContext.Provider value={{
+      rooms, clients, products, maintenanceItems, reservations, sales, currentUser, isLoggedIn: !!currentUser,
+      loading, login, logout, updateRoomStatus, addRoom, updateRoom, deleteRoom, addClient, deleteClient, addReservation,
+      updateReservation, deleteReservation, updateReservationStatus, addSale, addMaintenanceItem, getRoomById, getClientById
+    }}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) throw new Error('useApp must be used within an AppProvider');
+  return context;
+};
