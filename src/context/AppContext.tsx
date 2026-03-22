@@ -139,8 +139,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       roomId: reservation.roomId,
       checkin: reservation.checkIn, 
       checkOut: reservation.checkOut,
-      checkInTin: reservation.checkInTin || "14:00", // CON "T" MAYÚSCULA
-      checkOutT: reservation.checkOutT || "10:00",
+      checkInTime: reservation.checkInTin || "14:00", // CON "T" MAYÚSCULA
+      checkOutTime: reservation.checkOutT || "10:00",
       status: reservation.status || 'Confirmada',
       totalAmoun: reservation.totalAmount || 0,
       paidAmoun: reservation.paidAmount || 0,
